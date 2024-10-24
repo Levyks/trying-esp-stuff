@@ -34,7 +34,7 @@ anyhow = "1.0.91"
 tokio = { version = "1.41.0", features = ["rt", "time"] }
 ssd1315 = "0.2.1"
 embedded-graphics = "0.8.1"
-display-interface-i2c = "0.5.0"
+embedded-text = "0.7.2"
 
 [build-dependencies]
 embuild = "0.32.0"

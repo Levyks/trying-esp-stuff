@@ -1,19 +1,17 @@
-use std::thread;
-use display_interface_i2c::I2CInterface;
-use embedded_graphics::Drawable;
-use embedded_graphics::mono_font::ascii::{FONT_10X20, FONT_6X10};
+use embedded_graphics::mono_font::ascii::FONT_10X20;
 use embedded_graphics::mono_font::MonoTextStyle;
-use embedded_graphics::pixelcolor::{BinaryColor, Rgb565};
+use embedded_graphics::pixelcolor::{BinaryColor};
 use embedded_graphics::prelude::*;
-use embedded_graphics::primitives::{Circle, PrimitiveStyle};
 use embedded_graphics::text::{Alignment, LineHeight, Text, TextStyleBuilder};
+use embedded_graphics::Drawable;
 use esp_idf_svc::hal::delay::FreeRtos;
 use esp_idf_svc::hal::gpio::*;
 use esp_idf_svc::hal::i2c::{I2cConfig, I2cDriver};
 use esp_idf_svc::hal::peripherals::Peripherals;
 use esp_idf_svc::hal::prelude::FromValueType;
-use ssd1315::*;
 use ssd1315::interface::I2cDisplayInterface;
+use ssd1315::*;
+use std::thread;
 
 fn main() -> anyhow::Result<()> {
     // It is necessary to call this function once. Otherwise some patches to the runtime
@@ -32,6 +30,16 @@ fn main() -> anyhow::Result<()> {
     };
     esp_idf_svc::sys::esp! { unsafe { esp_idf_svc::sys::esp_vfs_eventfd_register(&config) } }?;
 
+    log::info!("Starting async run loop");
+    tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()?
+        .block_on(tokio_main())?;
+
+    Ok(())
+}
+
+async fn tokio_main() -> anyhow::Result<()> {
     log::info!("Setting up board...");
     let peripherals = Peripherals::take()?;
 
@@ -45,20 +53,15 @@ fn main() -> anyhow::Result<()> {
     let green_led = PinDriver::output(peripherals.pins.gpio12)?;
     let red_led = PinDriver::output(peripherals.pins.gpio13)?;
 
-    log::info!("Starting async run loop");
-    tokio::runtime::Builder::new_current_thread()
-        .enable_all()
-        .build()?
-        .block_on(async move {
-            tokio::spawn(blink_led_loop(green_led, red_led)).await?
-        })?;
-
-    display_loop(i2c)?;
+    thread::spawn(|| {
+        if let Err(e) = display_loop(i2c) {
+            log::error!("Display loop failed: {:?}", e);
+        }
+    });
+    tokio::spawn(blink_led_loop(green_led, red_led)).await??;
 
     Ok(())
 }
-
-type Display<'a> = Ssd1315<I2CInterface<I2cDriver<'a>>>;
 
 fn display_loop(i2c: I2cDriver) -> anyhow::Result<()> {
     log::info!("Starting display loop");
@@ -77,73 +80,38 @@ fn display_loop(i2c: I2cDriver) -> anyhow::Result<()> {
 
     loop {
         display.clear(BinaryColor::Off)?;
-        Text::with_text_style(
-            "OMG",
-            Point::new(64, 32),
-            character_style,
-            text_style,
-        ).draw(&mut display)?;
+        Text::with_text_style("OMG", Point::new(64, 32), character_style, text_style)
+            .draw(&mut display)?;
         display.flush_screen();
         FreeRtos::delay_ms(1000);
 
-
         display.clear(BinaryColor::Off)?;
-        Text::with_text_style(
-            "****",
-            Point::new(64, 32),
-            character_style,
-            text_style,
-        ).draw(&mut display)?;
+        Text::with_text_style("****", Point::new(64, 32), character_style, text_style)
+            .draw(&mut display)?;
         display.flush_screen();
         FreeRtos::delay_ms(1000);
 
-
         display.clear(BinaryColor::Off)?;
-        Text::with_text_style(
-            "HIII",
-            Point::new(64, 32),
-            character_style,
-            text_style,
-        ).draw(&mut display)?;
+        Text::with_text_style("HIII", Point::new(64, 32), character_style, text_style)
+            .draw(&mut display)?;
         display.flush_screen();
         FreeRtos::delay_ms(1000);
 
-
         display.clear(BinaryColor::Off)?;
-        Text::with_text_style(
-            "!!!!",
-            Point::new(64, 32),
-            character_style,
-            text_style,
-        ).draw(&mut display)?;
+        Text::with_text_style("!!!!", Point::new(64, 32), character_style, text_style)
+            .draw(&mut display)?;
         display.flush_screen();
         FreeRtos::delay_ms(1000);
     }
 }
 
-fn blink_led_loop_sync<'d, G: Pin, R: Pin>(mut green_led: PinDriver<'d, G, Output>, mut red_led: PinDriver<'d, R, Output>) -> anyhow::Result<()> {
-    loop {
-
-        log::info!("Changing to red");
-        green_led.set_low()?;
-        red_led.set_high()?;
-        FreeRtos::delay_ms(1000);
-        log::info!("Changing to green");
-        green_led.set_high()?;
-        red_led.set_low()?;
-        FreeRtos::delay_ms(1000);
-        log::info!("Keeping both on for a bit");
-        red_led.set_high()?;
-        FreeRtos::delay_ms(1000);
-    }
-}
-
-
-async fn blink_led_loop<'d, G: Pin, R: Pin>(mut green_led: PinDriver<'d, G, Output>, mut red_led: PinDriver<'d, R, Output>) -> anyhow::Result<()> {
+async fn blink_led_loop<'d, G: Pin, R: Pin>(
+    mut green_led: PinDriver<'d, G, Output>,
+    mut red_led: PinDriver<'d, R, Output>,
+) -> anyhow::Result<()> {
     let one_sec = tokio::time::Duration::from_secs(1);
     let mut interval = tokio::time::interval(one_sec);
     loop {
-
         log::info!("Changing to red");
         green_led.set_low()?;
         red_led.set_high()?;
