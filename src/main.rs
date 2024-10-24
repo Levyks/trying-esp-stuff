@@ -22,26 +22,34 @@ fn main() -> anyhow::Result<()> {
 
     log::info!("Setting up board...");
     let peripherals = Peripherals::take()?;
-    let led = PinDriver::output(peripherals.pins.gpio2)?;
+    let green_led = PinDriver::output(peripherals.pins.gpio12)?;
+    let red_led = PinDriver::output(peripherals.pins.gpio13)?;
 
     log::info!("Starting async run loop");
     tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()?
         .block_on(async move {
-            tokio::spawn(blink_led_loop(led)).await?
+            tokio::spawn(blink_led_loop(green_led, red_led)).await?
         })?;
 
     Ok(())
 }
 
-async fn blink_led_loop<'d, T: Pin>(mut led: PinDriver<'d, T, Output>, ) -> anyhow::Result<()> {
+async fn blink_led_loop<'d, G: Pin, R: Pin>(mut green_led: PinDriver<'d, G, Output>, mut red_led: PinDriver<'d, R, Output>) -> anyhow::Result<()> {
+    let one_sec = tokio::time::Duration::from_secs(1);
     loop {
-        log::info!("Setting LED high");
-        led.set_high()?;
-        tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
-        log::info!("Setting LED low");
-        led.set_low()?;
-        tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+
+        log::info!("Changing to red");
+        green_led.set_low()?;
+        red_led.set_high()?;
+        tokio::time::sleep(one_sec).await;
+        log::info!("Changing to green");
+        green_led.set_high()?;
+        red_led.set_low()?;
+        tokio::time::sleep(one_sec).await;
+        log::info!("Keeping both on for a bit");
+        red_led.set_high()?;
+        tokio::time::sleep(one_sec).await;
     }
 }
