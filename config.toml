@@ -1,0 +1,2 @@
+[env]
+ESP_IDF_PATH_ISSUES = 'warn'
