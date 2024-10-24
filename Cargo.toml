@@ -32,6 +32,9 @@ log = { version = "0.4", default-features = false }
 esp-idf-svc = { version = "0.49", default-features = false }
 anyhow = "1.0.91"
 tokio = { version = "1.41.0", features = ["rt", "time"] }
+ssd1315 = "0.2.1"
+embedded-graphics = "0.8.1"
+display-interface-i2c = "0.5.0"
 
 [build-dependencies]
 embuild = "0.32.0"
