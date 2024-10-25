@@ -78,30 +78,19 @@ fn display_loop(i2c: I2cDriver) -> anyhow::Result<()> {
         .line_height(LineHeight::Percent(150))
         .build();
 
+    let messages = vec!["HELLO\nWORLD", "FROM", "RUST", ":)"];
+
+    let texts = messages.iter().map(|message| {
+        Text::with_text_style(message, Point::new(64, 22), character_style, text_style)
+    }).collect::<Vec<_>>();
+
     loop {
-        display.clear(BinaryColor::Off)?;
-        Text::with_text_style("OMG", Point::new(64, 32), character_style, text_style)
-            .draw(&mut display)?;
-        display.flush_screen();
-        FreeRtos::delay_ms(1000);
-
-        display.clear(BinaryColor::Off)?;
-        Text::with_text_style("****", Point::new(64, 32), character_style, text_style)
-            .draw(&mut display)?;
-        display.flush_screen();
-        FreeRtos::delay_ms(1000);
-
-        display.clear(BinaryColor::Off)?;
-        Text::with_text_style("HIII", Point::new(64, 32), character_style, text_style)
-            .draw(&mut display)?;
-        display.flush_screen();
-        FreeRtos::delay_ms(1000);
-
-        display.clear(BinaryColor::Off)?;
-        Text::with_text_style("!!!!", Point::new(64, 32), character_style, text_style)
-            .draw(&mut display)?;
-        display.flush_screen();
-        FreeRtos::delay_ms(1000);
+        for text in &texts {
+            display.clear(BinaryColor::Off)?;
+            text.draw(&mut display)?;
+            display.flush_screen();
+            FreeRtos::delay_ms(1000);
+        }
     }
 }
 
